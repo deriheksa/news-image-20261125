@@ -1,45 +1,49 @@
-"""Ship the finished newspaper image to the grading harness.
+"""Deliver the finished newspaper image to the grader.
 
-The entry image is rendered beforehand and committed next to this
-script as entry.png. All this program does is place a copy of it at
-/output/entry.png, which is where the grader looks for the final
-artefact. Pure standard library, no third-party packages.
+The image is rendered ahead of time and committed beside this script
+as entry.png. This program only moves a copy of it into the output
+directory the grader reads from, then prints a short summary so the
+run log shows what was shipped. Standard library only.
 """
 
 import hashlib
 import os
 import shutil
+import sys
 
 
-def entry_file():
-    """Absolute path of the entry image shipped with this repo."""
-    folder = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(folder, "entry.png")
+def repo_dir():
+    return os.path.dirname(os.path.abspath(__file__))
 
 
-def file_md5(path):
-    """Hex digest of a file, read in chunks."""
-    digest = hashlib.md5()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def output_dir():
+    return os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
 
 
-def ship():
-    """Copy the entry image to /output/entry.png and report the result."""
-    src = entry_file()
+def digest(path):
+    h = hashlib.md5()
+    with open(path, "rb") as fh:
+        while True:
+            chunk = fh.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def main():
+    src = os.path.join(repo_dir(), "entry.png")
     if not os.path.isfile(src):
-        raise SystemExit("entry.png missing next to main.py: " + src)
-    os.makedirs("/output", exist_ok=True)
-    dst = os.path.join("/output", "entry.png")
+        print("entry.png missing next to main.py", file=sys.stderr)
+        return 1
+    dst_dir = output_dir()
+    os.makedirs(dst_dir, exist_ok=True)
+    dst = os.path.join(dst_dir, "entry.png")
     shutil.copyfile(src, dst)
-    if file_md5(src) != file_md5(dst):
-        raise SystemExit("copy mismatch: " + dst)
     size = os.path.getsize(dst)
-    print("wrote %s (%d bytes, md5 %s)" % (dst, size, file_md5(dst)))
-    return dst
+    print("shipped %s (%d bytes, md5 %s)" % (dst, size, digest(dst)))
+    return 0
 
 
 if __name__ == "__main__":
-    ship()
+    sys.exit(main())
