@@ -40,6 +40,10 @@ def main():
     os.makedirs(dst_dir, exist_ok=True)
     dst = os.path.join(dst_dir, "entry.png")
     shutil.copyfile(src, dst)
+    # Verify the copy landed intact before reporting success.
+    if digest(dst) != digest(src):
+        print("copy mismatch: %s differs from %s" % (dst, src), file=sys.stderr)
+        return 1
     size = os.path.getsize(dst)
     print("shipped %s (%d bytes, md5 %s)" % (dst, size, digest(dst)))
     return 0
